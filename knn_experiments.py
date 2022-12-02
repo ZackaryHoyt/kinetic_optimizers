@@ -4,6 +4,8 @@ import numpy as np
 np.seterr(all='raise')
 from copy import deepcopy
 
+import time
+
 """
 Allocates the given items to a cluster by the index of the given centres. Items are allocated to the first cluster closest to
 them.
@@ -259,7 +261,7 @@ def run_data_collection(k, c, σ_classes, σ_samples, d, n_samples, n_trials, mi
 Multiprocessing target function for running the tests, then coordinating when the output file is unlocked, exporting the
 experiment metrics, and finally indicating back to the main thread that a thread was just freed as the job is being terminated.
 """
-def run_collect_and_export_data(data_fp, k, c, σ_classes, σ_samples, d, n_samples, n_trials, min_dist, min_loss, lock, c_processes):
+def run_collect_and_export_data(k, c, σ_classes, σ_samples, d, n_samples, n_trials, min_dist, min_loss, c_processes):
 	kmeans_ds,\
 	iko_tracker_ds,\
 	nko_tracker_ds = run_data_collection(
@@ -269,21 +271,22 @@ def run_collect_and_export_data(data_fp, k, c, σ_classes, σ_samples, d, n_samp
 	assert isinstance(kmeans_ds, DataSummary)
 	assert isinstance(iko_tracker_ds, KineticOptimizerDataSummary)
 	assert isinstance(nko_tracker_ds, KineticOptimizerDataSummary)
-	row_data = ",".join(["{}"] * 16).format(
-			k, c , σ_classes, σ_samples, d, n_samples,
-			kmeans_ds.loss, kmeans_ds.n_gens,
-			iko_tracker_ds.loss, iko_tracker_ds.n_gens, iko_tracker_ds.p_ko_lte, iko_tracker_ds.p_ko_lt,
-			nko_tracker_ds.loss, nko_tracker_ds.n_gens, nko_tracker_ds.p_ko_lte, nko_tracker_ds.p_ko_lt
-		) + '\n'
-	if lock:
-		with lock:
-			with open(data_fp, mode='a') as ofs:
-				ofs.write(row_data)
-	else:
-		with open(data_fp, mode='a') as ofs:
-				ofs.write(row_data)
 	if c_processes:
 		c_processes.value -= 1
+	return ",".join(["{}"] * 16).format(
+				k, c , σ_classes, σ_samples, d, n_samples,
+				kmeans_ds.loss, kmeans_ds.n_gens,
+				iko_tracker_ds.loss, iko_tracker_ds.n_gens, iko_tracker_ds.p_ko_lte, iko_tracker_ds.p_ko_lt,
+				nko_tracker_ds.loss, nko_tracker_ds.n_gens, nko_tracker_ds.p_ko_lte, nko_tracker_ds.p_ko_lt
+			) + '\n'
+
+def data_reader(data_fp, data_queue):
+	with open(data_fp, mode='a', buffering=1) as ofs:
+		while True:
+			row_data = data_queue.get()
+			if row_data is None:
+				break
+			ofs.write(row_data)
 
 """
 Calculates the minimum number of samples required such that, for the given number of classes c and clusters k, there exists at
@@ -307,7 +310,6 @@ if __name__ == "__main__":
 
 	n_trials = 30
 	cpu_count = 15
-	batch_outputs = True
 	print("cpu_count={}".format(cpu_count))
 
 	output_dir = "outputs-updated"
@@ -322,9 +324,6 @@ if __name__ == "__main__":
 
 	n_samples_max = 60
 	n_samples_step_size = 5
-
-	if batch_outputs:
-		cpu_count = min(cpu_count, (int)(np.ceil(n_samples_max / n_samples_step_size)))
 
 	experiments_generator = itertools.product(
 		range(k_min, k_max + 1, parameter_step_size),
@@ -373,33 +372,39 @@ loss_nko_loss,n_gens_nko,p_nko_lte,p_nko_lt_loss"
 	if cpu_count == 1:
 		for k, c, σ_classes, σ_samples, d in experiments_generator:
 			print("\rk={}, c={}, σ_classes={}, σ_samples={}, d={}        ".format(k, c, σ_classes, σ_samples, d), end='')
-			for n_samples in get_n_samples_range(k=k, c=c, n_samples_max=n_samples_max, step_size=n_samples_step_size):
-				run_collect_and_export_data(data_fp, k, c, σ_classes, σ_samples, d, n_samples, n_trials, min_update_dist, loss_history_filter_threshold, None, None)
+			
+			with open(data_fp, mode='a') as ofs:
+				for n_samples in get_n_samples_range(k=k, c=c, n_samples_max=n_samples_max, step_size=n_samples_step_size):
+					ofs.write(run_collect_and_export_data(data_fp, k, c, σ_classes, σ_samples, d, n_samples, n_trials, min_update_dist, loss_history_filter_threshold, None, None))
 	else:
 		with multiprocessing.Pool(cpu_count) as mp_pool:
 			with multiprocessing.Manager() as mp_manager:
-				lock = mp_manager.Lock()
-				async_result = None
-				if batch_outputs:
-					for k, c, σ_classes, σ_samples, d in experiments_generator:
-						print("\rk={}, c={}, σ_classes={}, σ_samples={}, d={}        ".format(k, c, σ_classes, σ_samples, d), end='')
-						async_result = mp_pool.starmap_async(run_collect_and_export_data,[
-							(data_fp, k, c, σ_classes, σ_samples, d, n_samples, n_trials, min_update_dist, loss_history_filter_threshold, lock, None) for n_samples in get_n_samples_range(k=k, c=c, n_samples_max=n_samples_max, step_size=n_samples_step_size)
-						])
-						async_result.get()
-				else:
-					import time
-					c_processes = mp_manager.Value("c_processes", 0)
-					for k, c, σ_classes, σ_samples, d in experiments_generator:
-						print("\rk={}, c={}, σ_classes={}, σ_samples={}, d={}        ".format(k, c, σ_classes, σ_samples, d), end='')
-						n_samples_list = get_n_samples_range(k=k, c=c, n_samples_max=n_samples_max, step_size=n_samples_step_size)
-						c_processes.value += len(n_samples_list)
-						async_result = mp_pool.starmap_async(run_collect_and_export_data,[
-							(data_fp, k, c, σ_classes, σ_samples, d, n_samples, n_trials, min_update_dist, loss_history_filter_threshold, lock, c_processes) for n_samples in n_samples_list
-						])
-						time.sleep(0.05)
-						while c_processes.value > cpu_count:
-							time.sleep(0.1) # wait before checking to see if a thread was freed
-					if async_result is not None:
-						async_result.get()
+				c_processes = mp_manager.Value("c_processes", 0)
+				data_queue = mp_manager.Queue()
+
+				data_reader_rows_process = multiprocessing.Process(target=data_reader, args=(data_fp, data_queue))
+				data_reader_rows_process.daemon = False
+				data_reader_rows_process.start()
+				
+				for k, c, σ_classes, σ_samples, d in experiments_generator:
+					print("\rk={}, c={}, σ_classes={}, σ_samples={}, d={}        ".format(k, c, σ_classes, σ_samples, d), end='')
+					n_samples_list = get_n_samples_range(k=k, c=c, n_samples_max=n_samples_max, step_size=n_samples_step_size)
+					c_processes.value += len(n_samples_list)
+					for n_samples in n_samples_list:
+						data_queue.put(mp_pool.apply_async(
+							func=run_collect_and_export_data,
+							args=(k, c, σ_classes, σ_samples, d, n_samples, n_trials, min_update_dist, loss_history_filter_threshold, c_processes)
+						))
+					while c_processes.value > cpu_count:
+						time.sleep(0.01) # wait before checking to see if a thread was freed
+
+				print("1")
+				data_queue.put(None)
+				data_reader_rows_process.close()
+				data_reader_rows_process.join()
+			print("2")
+			mp_pool.close()
+			print("3")
+			mp_pool.join()
+			print("4")
 	print("")
