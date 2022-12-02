@@ -250,7 +250,7 @@ def run_data_collection(k, c, σ_classes, σ_samples, d, n_samples, n_trials, mi
 		nko_tracker.update(losses_ko=run_nko_loss_timeout(init_indices=init_indices, items=items, k=k, min_loss=min_loss, f_Δ=f_Δ, α=np.min(items), β=np.max(items)), losses_kmeans=losses_kmeans)
 	
 	return (
-			DataSummary(kmeans_tracker, n_trials=n_trials),
+			DataSummary(kmeans_tracker),
 			KineticOptimizerDataSummary(iko_tracker, n_trials=n_trials),
 			KineticOptimizerDataSummary(nko_tracker, n_trials=n_trials)
 		)
