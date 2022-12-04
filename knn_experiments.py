@@ -306,21 +306,21 @@ if __name__ == "__main__":
 	loss_history_filter_threshold = min_update_dist
 
 	n_trials = 30
-	cpu_count = 15
-	batch_outputs = True
+	cpu_count = 20
+	batch_outputs = False
 	print("cpu_count={}".format(cpu_count))
 
 	output_dir = "outputs-updated"
 	data_fp = "{}/data.csv".format(output_dir)
 
-	k_min, k_max = (2, 30)
-	c_min, c_max = (2, 30)
-	σ_classes_min, σ_classes_max = (2, 30)
-	σ_samples_min, σ_samples_max = (2, 30)
-	d_min, d_max = (2, 30)
-	parameter_step_size = 4
+	k_min, k_max = (2, 10)
+	c_min, c_max = (2, 10)
+	σ_classes_min, σ_classes_max = (2, 10)
+	σ_samples_min, σ_samples_max = (2, 10)
+	d_min, d_max = (2, 10)
+	parameter_step_size = 2
 
-	n_samples_max = 60
+	n_samples_max = 55
 	n_samples_step_size = 5
 
 	if batch_outputs:
@@ -334,10 +334,7 @@ if __name__ == "__main__":
 		range(d_min, d_max + 1, parameter_step_size)
 	)
 
-	csv_header = "k,c,std_classes,std_samples,d,n_samples,\
-loss_kmeans,n_gens_kmeans,\
-loss_iko_loss,n_gens_iko,p_iko_lte,p_iko_lt_loss,\
-loss_nko_loss,n_gens_nko,p_nko_lte,p_nko_lt_loss"
+	csv_header = "k,c,std_classes,std_samples,d,n_samples,loss_kmeans,n_gens_kmeans,loss_iko,n_gens_iko,p_iko_lte,p_iko_lt,loss_nko,n_gens_nko,p_nko_lte,p_nko_lt"
 
 	try:
 		os.makedirs(output_dir, exist_ok=False)

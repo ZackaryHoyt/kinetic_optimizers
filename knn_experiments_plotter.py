@@ -18,7 +18,7 @@ relative_improvement_true_nko = 100 * (data_df.loss_kmeans / data_df.loss_nko - 
 
 ################################################################################################################################
 
-ymin, ymax = (-2, 6)
+ymin, ymax = (-2, 4)
 stepsize_major, stepsize_minor = (2, 0.25)
 major_ticks = np.arange(ymin - stepsize_major, ymax + stepsize_major, stepsize_major)
 minor_ticks = np.arange(ymin - stepsize_major, ymax + stepsize_major, stepsize_minor)
@@ -72,13 +72,13 @@ plt.savefig("outputs/plots/kmeans_loss_reduction_analysis-nko.png", dpi=300, bbo
 
 ################################################################################################################################
 
-model = np.array([0.614393, 0.047717, -0.028824, -0.011297, 0.013425, -0.03823, -0.029667, -1.605095, 0.17589, -0.01971, -0.036922, 1.618054, -0.49085])
+model = np.array([-0.060519, 0.02425, -0.010491, 0.01132, -0.000366, -0.022094, -0.007009, -0.731593, 0.308351, 0.188232, 0.086298, 0.671194, 2.644897])
 y_intercept = model[0]
-standardizer_std, standardizer_mean = (0.511550, 0.463340)
+standardizer_std, standardizer_mean = (0.390684, 0.199375)
 model_pred = standardizer_std * inputs @ model + standardizer_mean
 
-ymin, ymax = (-2, 6)
-stepsize_major, stepsize_minor = (2, 0.25)
+ymin, ymax = (-2, 4)
+stepsize_major, stepsize_minor = (2, 1/8)
 major_ticks = np.arange(ymin - stepsize_major, ymax + stepsize_major, stepsize_major)
 minor_ticks = np.arange(ymin - stepsize_major, ymax + stepsize_major, stepsize_minor)
 
@@ -102,14 +102,18 @@ ax.set_xticklabels(minor_ticks, minor=True)
 ax.tick_params(axis='x', which='minor', labelsize=6)
 ax.tick_params(axis='both', which='major', labelsize=8)
 ax.set_axisbelow(True)
-ax.set_xlim(-0.5, 1.5)
+ax.set_xlim(-0.25, 0.75)
 ax.set_ylim(ymin, ymax)
 plt.savefig("outputs/plots/kmeans_loss_reduction_model-iko.png", dpi=300, bbox_inches='tight', pad_inches=0.025)
 
-model = np.array([0.438939, 0.037683, -0.020882, -0.013143, 0.012328, -0.031126, -0.025065, -1.242791, 0.251627, -0.137034, 0.064285, 1.50944, -0.341097])
+model = np.array([-0.242524, 0.007391, 0.001484, 0.000194, 0.001677, 0.002841, -0.001489, -0.313662, 0.240408, -0.063451, 0.190239, 0.641326, 0.909855])
 y_intercept = model[0]
-standardizer_std, standardizer_mean = (0.336290, 0.247605)
+standardizer_std, standardizer_mean = (0.198772, 0.025514)
 model_pred = standardizer_std * inputs @ model + standardizer_mean
+
+stepsize_major, stepsize_minor = (2, 1/16)
+major_ticks = np.arange(ymin - stepsize_major, ymax + stepsize_major, stepsize_major)
+minor_ticks = np.arange(ymin - stepsize_major, ymax + stepsize_major, stepsize_minor)
 
 plt.clf()
 plt.gcf().set_size_inches(4, 3.5)
@@ -131,13 +135,13 @@ ax.set_xticklabels(minor_ticks, minor=True)
 ax.tick_params(axis='x', which='minor', labelsize=6)
 ax.tick_params(axis='both', which='major', labelsize=8)
 ax.set_axisbelow(True)
-ax.set_xlim(-0.5, 1.5)
+ax.set_xlim(-0.0625, 0.1875)
 ax.set_ylim(ymin, ymax)
 plt.savefig("outputs/plots/kmeans_loss_reduction_model-nko.png", dpi=300, bbox_inches='tight', pad_inches=0.025)
 
 ################################################################################################################################
 
-ymin, ymax = (0, 20)
+ymin, ymax = (0, 35)
 stepsize_major, stepsize_minor = (5, 0.25)
 major_ticks = np.arange(ymin - stepsize_major, ymax + stepsize_major, stepsize_major)
 minor_ticks = np.arange(ymin - stepsize_major, ymax + stepsize_major, stepsize_minor)
@@ -210,14 +214,14 @@ plt.savefig("outputs/plots/convergence_speed_analysis-nko.png", dpi=300, bbox_in
 
 ################################################################################################################################
 
-ymin, ymax = (-5, 20)
+ymin, ymax = (-5, 35)
 stepsize_major, stepsize_minor = (5, 1)
 major_ticks = np.arange(ymin - stepsize_major, ymax + stepsize_major, stepsize_major)
 minor_ticks = np.arange(ymin - stepsize_major, ymax + stepsize_major, stepsize_minor)
 
-model = np.array([0.314969, -0.08743, 0.173975, -0.056195, 0.011152, -0.045243, 0.055571, -1.712579, -0.982006, -0.05342, -1.34424, -0.344494, -2.009366])
+model = np.array([0.085778, -0.071195, 0.173776, -0.072416, 0.025728, -0.042542, 0.028924, -1.824912, -0.69175, 0.043651, -1.402478, 0.045259, -3.43624])
 y_intercept = model[0]
-standardizer_std, standardizer_mean = (3.068263, 6.438857)
+standardizer_std, standardizer_mean = (4.352952, 8.985304)
 model_pred = standardizer_std * inputs @ model + standardizer_mean
 
 plt.clf()
@@ -241,9 +245,9 @@ ax.set_ylim(ymin, ymax)
 plt.gca().set_aspect("equal")
 plt.savefig("outputs/plots/convergence_speed_model-kmeans.png", dpi=300, bbox_inches='tight', pad_inches=0.025)
 
-model = np.array([0.992525, -0.066828, 0.120775, -0.045055, 0.020024, -0.010182, 0.042062, -2.563143, -1.681536, 0.042327, -1.029761, -1.291879, -3.106094])
+model = np.array([1.376642, -0.024892, 0.102339, -0.045036, 0.055755, -0.059945, 0.006675, -2.997136, -1.218197, 0.097237, -1.558839, -0.131065, -7.947001])
 y_intercept = model[0]
-standardizer_std, standardizer_mean = (2.635254, 7.836577)
+standardizer_std, standardizer_mean = (3.943964, 19.352101)
 model_pred = standardizer_std * inputs @ model + standardizer_mean
 
 plt.clf()
@@ -267,9 +271,9 @@ ax.set_ylim(ymin, ymax)
 plt.gca().set_aspect("equal")
 plt.savefig("outputs/plots/convergence_speed_model-iko.png", dpi=300, bbox_inches='tight', pad_inches=0.025)
 
-model = np.array([0.607524, -0.078709, 0.154671, -0.051101, 0.018199, -0.033463, 0.050158, -2.211421, -1.294285, 0.000755, -1.147883, -0.78461, -2.542605])
+model = np.array([0.61831, -0.056249, 0.151561, -0.062377, 0.04301, -0.066236, 0.021014, -2.514676, -0.841194, 0.032072, -1.489753, 0.258333, -5.317314])
 y_intercept = model[0]
-standardizer_std, standardizer_mean = (2.662627, 7.165780)
+standardizer_std, standardizer_mean = (4.927581, 15.664140)
 model_pred = standardizer_std * inputs @ model + standardizer_mean
 
 plt.clf()
