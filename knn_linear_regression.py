@@ -7,7 +7,7 @@ np.random.seed(0)
 training_partition_size = 0.5
 
 # Load Data
-data_df = pd.read_csv("outputs/data.csv")
+data_df = pd.read_csv("outputs_loss_timeout/data.csv")
 inputs = data_df[['k','c','std_classes','std_samples','d','n_samples']].to_numpy()
 inputs = np.concatenate([inputs, 1 / inputs], axis=1)
 # inputs = np.concatenate([inputs, inputs ** 2], axis=1)
@@ -31,11 +31,11 @@ def ls_regression(labels_train, labels_test):
 
 	# Train Data Evaluation
 	pred_train = np.matmul(sample_train, model)
-	err_train = np.sqrt(np.mean((labels_train - pred_train) ** 2) / n_train)
+	err_train = np.sqrt(np.mean((labels_train - pred_train) ** 2))
 
 	# Test Data Evaluation
 	pred_test = np.matmul(sample_test, model)
-	err_test = np.sqrt(np.mean((labels_test - pred_test) ** 2) / n_test)
+	err_test = np.sqrt(np.mean((labels_test - pred_test) ** 2))
 	
 	return (model, err_train, err_test)
 
