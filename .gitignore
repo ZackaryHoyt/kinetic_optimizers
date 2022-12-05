@@ -49,3 +49,4 @@ dist/**
 
 outputs-*/
 plots/
+*.png

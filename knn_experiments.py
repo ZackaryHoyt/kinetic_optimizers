@@ -68,7 +68,7 @@ def run_kmeans(init_indices, items, k) -> list:
 		centres_next = [np.average(clusters[i], axis=0) if clusters[i] else centres_next[i] for i in range(k)]
 		losses.append(np.average(cluster_losses))
 		if all([np.linalg.norm(nxt - curr, ord=2) == 0 for nxt, curr in zip(centres_next, centres)]):
-			return losses
+			return (centres_next, losses)
 		centres = deepcopy(centres_next)
 
 """
@@ -92,7 +92,7 @@ def run_iko(init_indices, items, k, f_Δ) -> list:
 			centres_next = [np.average(clusters[i], axis=0) if clusters[i] else centres_next[i] for i in range(k)]
 			clusters, cluster_losses = generate_clusters(centres=centres_next, items=items)
 			losses.append(np.average(cluster_losses))
-			return losses
+			return (centres_next, losses)
 		losses.append(np.average(cluster_losses))
 		prev_cluster_losses = cluster_losses
 		prev_clusters = clusters
@@ -120,7 +120,7 @@ def run_nko(init_indices, items, k, f_Δ, α, β) -> list:
 			centres_next = [np.average(clusters[i], axis=0) if clusters[i] else centres_next[i] for i in range(k)]
 			clusters, cluster_losses = generate_clusters(centres=centres_next, items=items)
 			losses.append(np.average(cluster_losses))
-			return losses
+			return (centres_next, losses)
 		losses.append(np.average(cluster_losses))
 		prev_cluster_losses = cluster_losses
 		prev_clusters = clusters
@@ -147,7 +147,8 @@ def run_iko_loss_timeout(init_indices, items, k, f_Δ, min_loss) -> list:
 			loss = np.average(cluster_losses)
 			if loss < losses[-1]:
 				losses.append(loss)
-			return losses
+				return (centres_next, losses)
+			return (centres, losses)
 		losses.append(np.average(cluster_losses))
 		prev_cluster_losses = cluster_losses
 		centres = deepcopy(centres_next)
@@ -174,7 +175,8 @@ def run_nko_loss_timeout(init_indices, items, k, f_Δ, min_loss, α, β) -> list
 			loss = np.average(cluster_losses)
 			if loss < losses[-1]:
 				losses.append(loss)
-			return losses
+				return (centres_next, losses)
+			return (centres, losses)
 		losses.append(np.average(cluster_losses))
 		prev_cluster_losses = cluster_losses
 		centres = deepcopy(centres_next)
@@ -242,10 +244,10 @@ def run_data_collection(k, c, σ_classes, σ_samples, d, n_samples, n_trials) ->
 
 		init_indices = np.random.choice(len(items), size=k, replace=False)
 
-		losses_kmeans = run_kmeans(init_indices=init_indices, items=items, k=k)
+		losses_kmeans = run_kmeans(init_indices=init_indices, items=items, k=k)[1]
 		kmeans_tracker.update(losses=losses_kmeans)
-		iko_tracker.update(losses_ko=run_iko(init_indices=init_indices, items=items, k=k, f_Δ=f_Δ), losses_kmeans=losses_kmeans)
-		nko_tracker.update(losses_ko=run_nko(init_indices=init_indices, items=items, k=k, f_Δ=f_Δ, α=np.min(items), β=np.max(items)), losses_kmeans=losses_kmeans)
+		iko_tracker.update(losses_ko=run_iko(init_indices=init_indices, items=items, k=k, f_Δ=f_Δ), losses_kmeans=losses_kmeans)[1]
+		nko_tracker.update(losses_ko=run_nko(init_indices=init_indices, items=items, k=k, f_Δ=f_Δ, α=np.min(items), β=np.max(items)), losses_kmeans=losses_kmeans)[1]
 	
 	return (
 			DataSummary(kmeans_tracker),
