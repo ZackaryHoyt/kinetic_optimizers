@@ -20,7 +20,7 @@ def generate_clusters(centres, items) -> tuple:
 			if cluster_error < selected_cluster_error:
 				selected_cluster_index = i
 				selected_cluster_error = cluster_error
-		clusters[selected_cluster_index].append(item)
+		clusters[selected_cluster_index].append(item.tolist())
 		cluster_losses[selected_cluster_index] += selected_cluster_error
 	cluster_losses = [(loss / size) if size else 0 for loss, size in zip(cluster_losses, [len(cluster) for cluster in clusters])]
 	return (clusters, cluster_losses)
@@ -73,41 +73,42 @@ def run_kmeans(init_indices, items, k) -> list:
 
 """
 Runs the IKO clustering algorithm over the given items, using k clusters initialized to the given indices. The gradient
-function takes 2 arguments: current cluster loss and previous cluster loss, in that order. Additionally, a patience threshold
-is used to shortcircuit the training once improvements are sufficiently minimal.
+function takes 2 arguments: current cluster loss and previous cluster loss, in that order.
 Returns the history of losses for training the model.
 """
-def run_iko_loss_timeout(init_indices, items, k, f_Δ, min_loss) -> list:
+def run_iko(init_indices, items, k, f_Δ) -> list:
 	centres = [np.array(items[init_index]) for init_index in init_indices]
 	centres_next = deepcopy(centres)
 	losses = []
 	prev_cluster_losses = [np.inf for _ in range(k)]
+	prev_clusters = []
 	while True:
 		clusters, cluster_losses = generate_clusters(centres=centres, items=items)
 		centres_next = [iku(
 				x_1=np.average(clusters[i], axis=0), x_2=centres[i],
 				Δ=f_Δ(curr_loss=cluster_losses[i], prev_loss=prev_cluster_losses[i])
 			) if clusters[i] else centres_next[i] for i in range(k)]
-		if all((np.abs(np.subtract(prev_cluster_losses, cluster_losses))) <= min_loss):
-			loss = np.average(cluster_losses)
-			if loss < losses[-1]:
-				losses.append(loss)
+		if prev_clusters == clusters:
+			centres_next = [np.average(clusters[i], axis=0) if clusters[i] else centres_next[i] for i in range(k)]
+			clusters, cluster_losses = generate_clusters(centres=centres_next, items=items)
+			losses.append(np.average(cluster_losses))
 			return losses
 		losses.append(np.average(cluster_losses))
 		prev_cluster_losses = cluster_losses
+		prev_clusters = clusters
 		centres = deepcopy(centres_next)
 
 """
 Runs the NKO clustering algorithm over the given items, using k clusters initialized to the given indices. The gradient
-function takes 2 arguments: current cluster loss and previous cluster loss, in that order. Additionally, a patience threshold
-is used to shortcircuit the training once improvements are sufficiently minimal.
+function takes 2 arguments: current cluster loss and previous cluster loss, in that order.
 Returns the history of losses for training the model.
 """
-def run_nko_loss_timeout(init_indices, items, k, f_Δ, min_loss, α, β) -> list:
+def run_nko(init_indices, items, k, f_Δ, α, β) -> list:
 	centres = [np.array(items[init_index]) for init_index in init_indices]
 	centres_next = deepcopy(centres)
 	losses = []
 	prev_cluster_losses = [np.inf for _ in range(k)]
+	prev_clusters = []
 	while True:
 		clusters, cluster_losses = generate_clusters(centres=centres, items=items)
 		centres_next = [nku(
@@ -115,70 +116,14 @@ def run_nko_loss_timeout(init_indices, items, k, f_Δ, min_loss, α, β) -> list
 				Δ=f_Δ(curr_loss=cluster_losses[i], prev_loss=prev_cluster_losses[i]),
 				α=α, β=β
 			) if clusters[i] else centres_next[i] for i in range(k)]
-		if all((np.abs(np.subtract(prev_cluster_losses, cluster_losses))) <= min_loss):
-			loss = np.average(cluster_losses)
-			if loss < losses[-1]:
-				losses.append(loss)
+		if prev_clusters == clusters:
+			centres_next = [np.average(clusters[i], axis=0) if clusters[i] else centres_next[i] for i in range(k)]
+			clusters, cluster_losses = generate_clusters(centres=centres_next, items=items)
+			losses.append(np.average(cluster_losses))
 			return losses
 		losses.append(np.average(cluster_losses))
 		prev_cluster_losses = cluster_losses
-		centres = deepcopy(centres_next)
-
-"""
-Runs the IKO clustering algorithm over the given items, using k clusters initialized to the given indices. The gradient
-function takes 2 arguments: current cluster loss and previous cluster loss, in that order. Additionally, a patience threshold
-is used to shortcircuit the training once the next cluster centers are sufficiently similar to the current.
-Returns the history of losses for training the model.
-"""
-def run_iko_dist_timeout(init_indices, items, k, f_Δ, min_dist) -> list:
-	centres = [np.array(items[init_index]) for init_index in init_indices]
-	centres_next = deepcopy(centres)
-	losses = []
-	prev_cluster_losses = [np.inf for _ in range(k)]
-	while True:
-		clusters, cluster_losses = generate_clusters(centres=centres, items=items)
-		centres_next = [iku(
-				x_1=np.average(clusters[i], axis=0), x_2=centres[i],
-				Δ=f_Δ(curr_loss=cluster_losses[i], prev_loss=prev_cluster_losses[i])
-			) if clusters[i] else centres_next[i] for i in range(k)]
-		if all([np.linalg.norm(nxt - curr, ord=2) <= min_dist for nxt, curr in zip(centres_next, centres)]):
-			# Since the algorithm is not guaranteed to be monotonically decreasing in terms of loss, the final step can be
-			# ignored if it is worse than the current.
-			loss = np.average(cluster_losses)
-			if loss < losses[-1]:
-				losses.append(loss)
-			return losses
-		losses.append(np.average(cluster_losses))
-		prev_cluster_losses = cluster_losses
-		centres = deepcopy(centres_next)
-
-"""
-Runs the NKO clustering algorithm over the given items, using k clusters initialized to the given indices. The gradient
-function takes 2 arguments: current cluster loss and previous cluster loss, in that order. Additionally, a patience threshold
-is used to shortcircuit the training once the next cluster centers are sufficiently similar to the current.
-Returns the history of losses for training the model.
-"""
-def run_nko_dist_timeout(init_indices, items, k, f_Δ, min_dist, α, β) -> list:
-	centres = [np.array(items[init_index]) for init_index in init_indices]
-	centres_next = deepcopy(centres)
-	losses = []
-	prev_cluster_losses = [np.inf for _ in range(k)]
-	while True:
-		clusters, cluster_losses = generate_clusters(centres=centres, items=items)
-		centres_next = [nku(
-				x_1=np.average(clusters[i], axis=0), x_2=centres[i],
-				Δ=f_Δ(curr_loss=cluster_losses[i], prev_loss=prev_cluster_losses[i]),
-				α=α, β=β
-			) if clusters[i] else centres_next[i] for i in range(k)]
-		if all([np.linalg.norm(nxt - curr, ord=2) <= min_dist for nxt, curr in zip(centres_next, centres)]):
-			# Since the algorithm is not guaranteed to be monotonically decreasing in terms of loss, the final step can be
-			# ignored if it is worse than the current.
-			loss = np.average(cluster_losses)
-			if loss < losses[-1]:
-				losses.append(loss)
-			return losses
-		losses.append(np.average(cluster_losses))
-		prev_cluster_losses = cluster_losses
+		prev_clusters = clusters
 		centres = deepcopy(centres_next)
 
 """
@@ -231,7 +176,7 @@ class KineticOptimizerDataSummary(DataSummary):
 Runs the repeatable experiments to collect and aggregate the various implemented algorithms.
 Returns a tuple containing the arbitrarily arranged DataSummary and KineticOptimizerDataSummary results.
 """
-def run_data_collection(k, c, σ_classes, σ_samples, d, n_samples, n_trials, min_dist, min_loss) -> tuple:
+def run_data_collection(k, c, σ_classes, σ_samples, d, n_samples, n_trials) -> tuple:
 	# Need to add a tracker for each type of experiment being ran.
 	kmeans_tracker = DataTracker()
 	iko_tracker = KineticOptimizerDataTracker()
@@ -246,8 +191,8 @@ def run_data_collection(k, c, σ_classes, σ_samples, d, n_samples, n_trials, mi
 
 		losses_kmeans = run_kmeans(init_indices=init_indices, items=items, k=k)
 		kmeans_tracker.update(losses=losses_kmeans)
-		iko_tracker.update(losses_ko=run_iko_loss_timeout(init_indices=init_indices, items=items, k=k, min_loss=min_loss, f_Δ=f_Δ), losses_kmeans=losses_kmeans)
-		nko_tracker.update(losses_ko=run_nko_loss_timeout(init_indices=init_indices, items=items, k=k, min_loss=min_loss, f_Δ=f_Δ, α=np.min(items), β=np.max(items)), losses_kmeans=losses_kmeans)
+		iko_tracker.update(losses_ko=run_iko(init_indices=init_indices, items=items, k=k, f_Δ=f_Δ), losses_kmeans=losses_kmeans)
+		nko_tracker.update(losses_ko=run_nko(init_indices=init_indices, items=items, k=k, f_Δ=f_Δ, α=np.min(items), β=np.max(items)), losses_kmeans=losses_kmeans)
 	
 	return (
 			DataSummary(kmeans_tracker),
@@ -259,13 +204,10 @@ def run_data_collection(k, c, σ_classes, σ_samples, d, n_samples, n_trials, mi
 Multiprocessing target function for running the tests, then coordinating when the output file is unlocked, exporting the
 experiment metrics, and finally indicating back to the main thread that a thread was just freed as the job is being terminated.
 """
-def run_collect_and_export_data(data_fp, k, c, σ_classes, σ_samples, d, n_samples, n_trials, min_dist, min_loss, lock, c_processes):
+def run_collect_and_export_data(data_fp, k, c, σ_classes, σ_samples, d, n_samples, n_trials, lock, c_processes):
 	kmeans_ds,\
 	iko_tracker_ds,\
-	nko_tracker_ds = run_data_collection(
-		k=k, c=c, σ_classes=σ_classes, σ_samples=σ_samples, d=d, n_samples=n_samples,
-		n_trials=n_trials, min_dist=min_dist, min_loss=min_loss
-	)
+	nko_tracker_ds = run_data_collection(k=k, c=c, σ_classes=σ_classes, σ_samples=σ_samples, d=d, n_samples=n_samples)
 	assert isinstance(kmeans_ds, DataSummary)
 	assert isinstance(iko_tracker_ds, KineticOptimizerDataSummary)
 	assert isinstance(nko_tracker_ds, KineticOptimizerDataSummary)
@@ -302,15 +244,13 @@ if __name__ == "__main__":
 	import multiprocessing
 
 	np.random.seed(0)
-	min_update_dist = 0.00001
-	loss_history_filter_threshold = min_update_dist
 
 	n_trials = 30
 	cpu_count = 20
 	batch_outputs = False
 	print("cpu_count={}".format(cpu_count))
 
-	output_dir = "outputs-updated"
+	output_dir = "outputs-variant"
 	data_fp = "{}/data.csv".format(output_dir)
 
 	k_min, k_max = (2, 10)
@@ -318,7 +258,7 @@ if __name__ == "__main__":
 	σ_classes_min, σ_classes_max = (2, 10)
 	σ_samples_min, σ_samples_max = (2, 10)
 	d_min, d_max = (2, 10)
-	parameter_step_size = 2
+	parameter_step_size = 4
 
 	n_samples_max = 55
 	n_samples_step_size = 5
@@ -371,7 +311,7 @@ if __name__ == "__main__":
 		for k, c, σ_classes, σ_samples, d in experiments_generator:
 			print("\rk={}, c={}, σ_classes={}, σ_samples={}, d={}        ".format(k, c, σ_classes, σ_samples, d), end='')
 			for n_samples in get_n_samples_range(k=k, c=c, n_samples_max=n_samples_max, step_size=n_samples_step_size):
-				run_collect_and_export_data(data_fp, k, c, σ_classes, σ_samples, d, n_samples, n_trials, min_update_dist, loss_history_filter_threshold, None, None)
+				run_collect_and_export_data(data_fp, k, c, σ_classes, σ_samples, d, n_samples, n_trials, None, None)
 	else:
 		with multiprocessing.Pool(cpu_count) as mp_pool:
 			with multiprocessing.Manager() as mp_manager:
@@ -381,7 +321,7 @@ if __name__ == "__main__":
 					for k, c, σ_classes, σ_samples, d in experiments_generator:
 						print("\rk={}, c={}, σ_classes={}, σ_samples={}, d={}        ".format(k, c, σ_classes, σ_samples, d), end='')
 						async_result = mp_pool.starmap_async(run_collect_and_export_data,[
-							(data_fp, k, c, σ_classes, σ_samples, d, n_samples, n_trials, min_update_dist, loss_history_filter_threshold, lock, None) for n_samples in get_n_samples_range(k=k, c=c, n_samples_max=n_samples_max, step_size=n_samples_step_size)
+							(data_fp, k, c, σ_classes, σ_samples, d, n_samples, n_trials, lock, None) for n_samples in get_n_samples_range(k=k, c=c, n_samples_max=n_samples_max, step_size=n_samples_step_size)
 						])
 						async_result.get()
 				else:
@@ -392,7 +332,7 @@ if __name__ == "__main__":
 						n_samples_list = get_n_samples_range(k=k, c=c, n_samples_max=n_samples_max, step_size=n_samples_step_size)
 						c_processes.value += len(n_samples_list)
 						async_result = mp_pool.starmap_async(run_collect_and_export_data,[
-							(data_fp, k, c, σ_classes, σ_samples, d, n_samples, n_trials, min_update_dist, loss_history_filter_threshold, lock, c_processes) for n_samples in n_samples_list
+							(data_fp, k, c, σ_classes, σ_samples, d, n_samples, n_trials, lock, c_processes) for n_samples in n_samples_list
 						])
 						time.sleep(0.05)
 						while c_processes.value > cpu_count:
