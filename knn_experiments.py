@@ -127,6 +127,59 @@ def run_nko(init_indices, items, k, f_Δ, α, β) -> list:
 		centres = deepcopy(centres_next)
 
 """
+Runs the IKO clustering algorithm over the given items, using k clusters initialized to the given indices. The gradient
+function takes 2 arguments: current cluster loss and previous cluster loss, in that order. Additionally, a patience threshold
+is used to shortcircuit the training once improvements are sufficiently minimal.
+Returns the history of losses for training the model.
+"""
+def run_iko_loss_timeout(init_indices, items, k, f_Δ, min_loss) -> list:
+	centres = [np.array(items[init_index]) for init_index in init_indices]
+	centres_next = deepcopy(centres)
+	losses = []
+	prev_cluster_losses = [np.inf for _ in range(k)]
+	while True:
+		clusters, cluster_losses = generate_clusters(centres=centres, items=items)
+		centres_next = [iku(
+				x_1=np.average(clusters[i], axis=0), x_2=centres[i],
+				Δ=f_Δ(curr_loss=cluster_losses[i], prev_loss=prev_cluster_losses[i])
+			) if clusters[i] else centres_next[i] for i in range(k)]
+		if all((np.abs(np.subtract(prev_cluster_losses, cluster_losses))) <= min_loss):
+			loss = np.average(cluster_losses)
+			if loss < losses[-1]:
+				losses.append(loss)
+			return losses
+		losses.append(np.average(cluster_losses))
+		prev_cluster_losses = cluster_losses
+		centres = deepcopy(centres_next)
+
+"""
+Runs the NKO clustering algorithm over the given items, using k clusters initialized to the given indices. The gradient
+function takes 2 arguments: current cluster loss and previous cluster loss, in that order. Additionally, a patience threshold
+is used to shortcircuit the training once improvements are sufficiently minimal.
+Returns the history of losses for training the model.
+"""
+def run_nko_loss_timeout(init_indices, items, k, f_Δ, min_loss, α, β) -> list:
+	centres = [np.array(items[init_index]) for init_index in init_indices]
+	centres_next = deepcopy(centres)
+	losses = []
+	prev_cluster_losses = [np.inf for _ in range(k)]
+	while True:
+		clusters, cluster_losses = generate_clusters(centres=centres, items=items)
+		centres_next = [nku(
+				x_1=np.average(clusters[i], axis=0), x_2=centres[i],
+				Δ=f_Δ(curr_loss=cluster_losses[i], prev_loss=prev_cluster_losses[i]),
+				α=α, β=β
+			) if clusters[i] else centres_next[i] for i in range(k)]
+		if all((np.abs(np.subtract(prev_cluster_losses, cluster_losses))) <= min_loss):
+			loss = np.average(cluster_losses)
+			if loss < losses[-1]:
+				losses.append(loss)
+			return losses
+		losses.append(np.average(cluster_losses))
+		prev_cluster_losses = cluster_losses
+		centres = deepcopy(centres_next)
+
+"""
 DataTracker class wraps tracking the loss and number of training generation histories.
 """
 class DataTracker:
